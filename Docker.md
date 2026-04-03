@@ -26,24 +26,78 @@ A estrutura de um Dockerfile é construída em camadas (layers) onde **cada laye
 Se trata do documento que define as instruções (Layers) que serão usadas para a criação de uma Imagem. Para tal podemos fazer uso dos seguintes comandos:
 ### FROM
 Define a imagem base a ser usada, bem como sua versão e tags
+
+É a primeira Layer, podendo ser precedida somente por ARG
 ### WORKDIR
 Define o diretório onde as subseguintes Layers irão operar
 ### COPY
 Realiza a cópia de dados de uma fonte para um destino sendo o destino a localização no Container
 ### ADD
+Adiciona arquivos remotos ou locais com a possiblidade de, por exemplo, descomprimir um arquivo .tar
 ### RUN
 Realiza a execução de um dado comando durante o processo de build da imagem
 ### ENV
 Permite setar variaveis de ambiente a serem usadas pelo Container
+
+Podemos mudar as variaveis de ambiente usando a flag -e na notação `docker run -e foo=bar postgres env`
+
+Podemos restringir recursos do container fazendo uso de --memory e --cpus como `docker run -e POSTGRES_PASSWORD=secret --memory="512m" --cpus="0.5" postgres`
 ### ARG
 Permite definir variáveis, invisíveis ao Container, mas úteis no desenvolvimento pois torna o código mais DRY
 ### CMD
 Determina o comando padrão a ser executado quando um Container estiver sob execução
 ### ENTRYPOINT
+Especifica um executável padrão a ser utilizado na inicialização do container
 ### USER
 Define um perfil de usuário que irá executar as subseguintes etapas
 ### EXPOSE
-Define a porta que o Container deve expor para se comunicar
+Define a porta que o Container deve expor para se comunicar na ordem HOST:CONTAINER quando passado a flag -p no CLI
+
+Podemos omitir a porta do host em situações onde queremos somente mudar a porta efemera do container seguindo a notação
+```docker run -p 80 nginx```
+
+Podemos publicar em todas as portas efemeras com o intuito de evitar conflitos de uso de portas usando a flag -P
+### HEALTHCHECK
+Faz a checagem da saúde do container em sua inicialização
+### LABEL
+Nos permite inserir metadados à imagem
+### MAINTAINER
+Especifica o autor da imagem
+### ONBUILD
+### SHELL
+Define a shell padrão de uma imagem
+### STOPSIGNAL
+### Parser directives
+**São opcionais e afetam como as linhas seguintes serão lidadas no Dockerfile mas sem adicionar novas Layers**
+
+Tem como sintaxe `# directive=value` sendo as directives possíveis:
+* `syntax` (não é case sensitive)
+    * especifíca a versão da sintaxe a ser seguida no build `# syntax=docker/dockerfile:1`. se nao especificado usa a versão do Docker instalado na maquina
+* `escape` 
+    * especifíca caracteres de escape para, por exemplo, quebra de linha. se não especificado usa \
+* `check` (não é case sensitive e seus valores devem fazer uso de Pascal case)
+    * define como a checagem do build das Layers serão feitas, por padrão, todos os checks são feitos e falhas tratadas como Warnings
+    * podemos por exemplo ignorar alguns checks feitos por padrão `# check=skip=JSONArgsRecommended,StageNameCasing` ou até mesmo desativar todos os checks `# check=skip=all`
+    * **podemos fazer builds quebrarem na presença de Warnings usando `# check=error=true`**, quando usado essa Parser directive é de bom tom definirmos a `syntax` pois em versões futuras da imagem podemos ter problemas inesperados
+    * **para incluirmos mais de uma checagem devemos separá-las por ; `# check=skip=JSONArgsRecommended;error=true`**
+
+**Após um comentário, linha vazia ou Layer o Parser directive não é mais considerado, logo, nosso Parser directive deve estar no inicio do Dockerfile**
+
+**É convenção deixar linhas em branco entre Parser directives**
+
+**Cada Parser directive deve ser único** sendo o exemplo abaixo inválido
+```docker
+# directive=value1
+# directive=value2
+
+FROM ImageName
+```
+
+Exemplo de caso inválido pois precede uma Layer:
+```docker
+FROM ImageName
+# directive=value
+```
 ## Cache
 Docker se beneficia de cache de builds anteriores mitigando a necessidade de executar novamente o mesmo comando durante o novo build, tornando mais eficiente este processo
 
@@ -125,34 +179,23 @@ Algumas características de Containers são:
 
 * Garantem reprodutibilidade 
 # Volumes
-São formas persistentes de armazenamento de dados de Containers dentro do Docker
-# Bind
-São formas persistentes de armazenamento de dados de Containers no Host, isto é, na maquina em que está sendo executado o Container
+São formas persistentes de armazenamento de dados de Containers dentro do Docker que podem ser usados por diversos containers
+
+Podemos fazer sua criação via Dockerfile ou ainda via CLI da seguinte forma `docker volume create log-data`
+
+Para que o container faça uso desse volume devemos atribuir a ele via CLI com a flag -v `docker run -d -p 80:80 -v log-data:/logs docker/welcome-to-docker`. **se o volume nao existir ele é criado automaticamente**
+# Bind Mounts
+São formas persistentes de armazenamento de dados de Containers no Host, isto é, na maquina em que está sendo executado o Container fazendo com que esses recursos sejam compartilhados em tempo real com o container
+
+Podem ser criados usando a flag de volumes -v ou ainda --mount durante o docker run
+
+O uso de -v faz com que seja criado um bind mount simples sem tanto controle granular quanto --mount `docker run -v /HOST/PATH:/CONTAINER/PATH -it nginx`
+
+Com o uso de --mount podemos especificar, por exemplo, permissao somente de leitura `docker run -v HOST-DIRECTORY:/CONTAINER-DIRECTORY:ro nginx` (rw para read-write)
+
+* ro nao permite alteração no host, somente leitura
+* rw permite alteração no host, leitura e escrita
+
+**Com --mount se o volume não existir ele nao é criado automaticamente**
 # Namespaces
 # overlayfs
-# CLI
-## docker build
-## docker run
-## docker start
-## docker stop
-## docker Container prune
-## docker Container attach
-## docker Container stats
-## docker Container kill
-## docker Container logs
-## docker Container checkpoint
-## docker Container restore
-## docker Container commit
-## docker Container mount
-## docker Container unmount
-## docker Container update
-## docker Container exec
-## docker Container top
-## docker Container export
-## docker Container port
-## docker image prune
-## docker volume create
-## docker volume mount
-## docker volume prune
-## docker volume delete
-## docker volume exists
